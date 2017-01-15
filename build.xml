@@ -1,0 +1,117 @@
+﻿<project name="Installer une application" default="copy-to-prod" basedir="." xmlns:git="antlib:com.rimerosolutions.ant.git">
+
+	<target name="run-test">
+		<exec executable="./vendor/bin/phpunit" dir="." failonerror="true">
+		</exec>
+		<exec executable="npm" dir="." failonerror="true">
+			<arg value="run" />
+			<arg value="test" />
+		</exec>
+	</target>
+
+	<target name="install-libs">
+		<exec executable="composer" dir="." failonerror="true">
+			<arg value="install" />
+		</exec>
+		<exec executable="npm" dir="." failonerror="true">
+			<arg value="install" />
+		</exec>
+		<exec executable="npm" dir="." failonerror="true">
+			<arg value="run" />
+			<arg value="build" />
+			<arg value="--base=webpack.admin" />
+		</exec>
+	</target>
+
+	<target name="copy-to-prod" depends="install-modules">
+		<copy todir="work" overwrite="true">
+			<fileset dir="${dir.application}" excludes="**/.git/,**/.gitignore" />
+		</copy>
+		<exec executable="scp" dir="." failonerror="true">
+			<arg value="-r" />
+			<arg value="work" />
+			<arg value="${server.application}" />
+		</exec>
+		<delete dir="work" />
+	</target>
+
+
+	<target name="install-modules" depends="config">
+		<property file="install_auto.properties" />
+
+		<mkdir dir="${dir.modules}" />
+		<for param="module" list="${list_modules_url}" delimiter=",">
+			<sequential>
+				<git-clone dir="${dir.modules}/@{module}" uri="${@{module}}" />
+			</sequential>
+		</for>
+	</target>
+
+	<target name="config" depends="install-application">
+		<for param="file" list="${list_file_to_configure}" delimiter=",">
+			<sequential>
+				<echo message="Fichier a configurer : @{file}" />
+				<for param="prop" list="${list_prop_to_configure}" delimiter=",">
+					<sequential>
+						<echo message="@{prop}" />
+						<replace file="${dir.application}/@{file}" value="">
+							<replacefilter token="{{@{prop}}}" value="${@{prop}}" />
+						</replace>
+					</sequential>
+				</for>
+			</sequential>
+		</for>
+	</target>
+
+	<target name="install-application" depends="init">
+		<git-clone dir="${dir.application}" uri="${git.project.uri}" />
+	</target>
+
+	<target name="init">
+		<mkdir dir="${dir.application}" />
+		<git:settings refId="git.settings" username="${git.username}" password="${git.password}" name="${git.name}" email="${git.email}" />
+	</target>
+
+	<macrodef name="git-clone">
+		<attribute name="dir" />
+		<attribute name="uri" />
+		<sequential>
+			<condition property="is_git_not_cloned">
+				<not>
+					<available file="@{dir}/.git/" type="dir" />
+				</not>
+			</condition>
+
+			<if>
+				<equals arg1="${is_git_not_cloned}" arg2="true" />
+				<then>
+					<echo message="git-clone-checkout" />
+					<git:git directory="@{dir}" settingsRef="git.settings">
+						<clone uri="@{uri}" cloneallbranches="false" branchnames="origin/${git.branch}" branchtotrack="origin/${git.branch}" nocheckout="true" clonesubmodules="false" />
+					</git:git>
+					<git:git directory="@{dir}" settingsRef="git.settings">
+						<fetch uri="@{uri}" />
+						<checkout branchname="origin/${git.branch}" />
+					</git:git>
+				</then>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<typedef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<fileset dir="lib">
+				<include name="ant-contrib*.jar" />
+			</fileset>
+		</classpath>
+	</typedef>
+	<taskdef uri="antlib:com.rimerosolutions.ant.git" resource="com/rimerosolutions/ant/git/jgit-ant-lib.xml">
+		<classpath>
+			<fileset dir="lib">
+				<include name="*.jar" />
+			</fileset>
+		</classpath>
+	</taskdef>
+	<property file="install_auto.properties" />
+
+</project>
