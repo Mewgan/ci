@@ -1,4 +1,4 @@
-﻿<project name="Installer une application" default="copy-to-prod" basedir="." xmlns:git="antlib:com.rimerosolutions.ant.git">
+﻿<project name="Installer une application" basedir="." xmlns:git="antlib:com.rimerosolutions.ant.git">
 
 	<target name="run-test">
 		<exec executable="./vendor/bin/phpunit" dir="." failonerror="true">
@@ -25,7 +25,7 @@
 
 	<target name="copy-to-prod" depends="install-modules">
 		<copy todir="work" overwrite="true">
-			<fileset dir="${dir.application}" excludes="**/.git/,**/.gitignore" />
+			<fileset dir="${dir.application}" excludes="${files.excludes}" />
 		</copy>
 		<exec executable="scp" dir="." failonerror="true">
 			<arg value="-r" />
