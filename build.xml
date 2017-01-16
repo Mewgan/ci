@@ -148,6 +148,11 @@
 						<checkout branchname="origin/${git.branch}" />
 					</git:git>
 				</then>
+				<else>
+					<exec executable="git" dir="@{dir}" failonerror="true">
+						<arg value="pull" />
+					</exec>
+				</else>
 			</if>
 		</sequential>
 	</macrodef>
